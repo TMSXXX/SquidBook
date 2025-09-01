@@ -1,0 +1,45 @@
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  /* 修正文本颜色：浅色背景配深色文本，避免视觉干扰 */
+  color: rgba(0, 0, 0, 0.87); 
+  background-color: azure;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 全局重置：补充 margin/padding 重置，避免浏览器默认样式干扰 */
+* {
+  box-sizing: border-box;
+  margin: 0; /* 清除所有元素默认外边距 */
+  padding: 0; /* 清除所有元素默认内边距 */
+}
+
+button {
+  transition: all 0.2s cubic-bezier(0.075, 0.82, 0.165, 1);
+  padding: 10px 20px;
+  background-color: #313131;
+  color: #EEEEEE;
+  border-radius: 20px;
+  border-width: 0cap;
+}
+
+html, body {
+  height: 100%;
+  width: 100%; /* 补充宽度100%，让根容器撑满视口宽度 */
+  background-color: azure;
+  overflow-x: hidden; /* 避免横向滚动条（若有元素溢出） */
+}
+
+#app {
+  height: 100%;
+  width: 100%; /* 让 #app 撑满 html/body 的宽度 */
+  /* 若后续内部元素需要居中，可加 max-width + margin: 0 auto，暂时先撑满 */
+  /* max-width: 1440px; margin: 0 auto; */
+}
