@@ -1,20 +1,20 @@
 // src/api/accountApi.ts
-import axios from 'axios';
-import type { Item, ItemType } from '@/types/account'; // @ 是src目录的别名（需配置）
- // @ 是src目录的别名（需配置）
+import { invoke } from '@tauri-apps/api/core';
+import type { Item, ItemType } from '@/types/account';
 import { dateConvert } from '@/utils/dateUtil';
-
-// 基础URL（如果后端接口有统一前缀，可在这里配置）
-axios.defaults.baseURL = '/api'; // 对应后端的 /api/items 等接口
 
 // 1. 获取所有记账项
 export const getItems = async (): Promise<Item[]> => {
-  const response = await axios.get<Item[]>('/items');
-  // 统一处理日期格式（避免每个组件都要转换）
-  return response.data.map(item => ({
-    ...item,
-    created_at: dateConvert(item.created_at),
-  }));
+  try {
+    const items = await invoke<Item[]>('get_items');
+    return items.map(item => ({
+      ...item,
+      created_at: dateConvert(item.created_at),
+    }));
+  } catch (error) {
+    console.error('获取记账项失败:', error);
+    throw error;
+  }
 };
 
 // 2. 添加记账项
@@ -24,35 +24,64 @@ export interface AddItemParams {
   type: ItemType;
   created_at: string;
 }
-export const addItem = async (params: AddItemParams): Promise<Item> => {
-  const response = await axios.post<Item>('/items', params);
-  return response.data;
+
+export const addItem = async (params: AddItemParams): Promise<number> => {
+  try {
+    return await invoke<number>('add_item', {
+      request: {
+        name: params.name,
+        value: params.value,
+        item_type: params.type,
+        created_at: params.created_at
+      }
+    });
+  } catch (error) {
+    console.error('添加记账项失败:', error);
+    throw error;
+  }
 };
 
-// 3. 删除记账项
+// 3. 删除记账项 - 修正参数名
 export const deleteItem = async (id: number): Promise<void> => {
-  await axios.delete(`/items/${id}`);
+  try {
+    await invoke('delete_item', { id: id }); // 修改为 id
+  } catch (error) {
+    console.error('删除记账项失败:', error);
+    throw error;
+  }
 };
 
-// 4. 更新记账项
+// 4. 更新记账项 - 修正参数名
 export interface UpdateItemParams {
   id: number;
   name: string;
   value: number;
-  type: ItemType;
+  type: string;
   created_at: string;
 }
-export const updateItem = async (params: UpdateItemParams): Promise<Item> => {
-  const response = await axios.put<Item>(`/items/${params.id}`, params);
-  return response.data;
-};
 
-// 5. （可选）后端汇总接口（未来切换后端汇总时用）
-export interface DailySummary {
-  date: string;
-  total: number;
-}
-export const getDailySummary = async (): Promise<DailySummary[]> => {
-  const response = await axios.get<DailySummary[]>('/summary/daily');
-  return response.data;
+
+export const updateItem = async (params: UpdateItemParams): Promise<void> => {
+  try {
+    console.log('调用 update_item 参数:', {
+      id: params.id,
+      name: params.name,
+      value: params.value,
+      itemType: params.type, // 修正这里
+      createdAt: params.created_at
+    });
+    
+    const result = await invoke('update_item', {
+      id: params.id,
+      name: params.name,
+      value: params.value,
+      itemType: params.type, // 修正这里
+      createdAt: params.created_at
+    });
+    
+    console.log('更新成功:', result);
+  } catch (error) {
+    console.error('更新记账项失败:', error);
+    throw error;
+  }
 };

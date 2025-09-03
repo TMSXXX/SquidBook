@@ -1,11 +1,11 @@
 <template>
     <div class="outerWindow">
         <div class="addWindow">
-            <ink-spot size="80" positionType='absolute' bgColor="#aa99fb" posX="2%" posY="4%" zIndex="100" />
-            <ink-spot size="30" positionType='absolute' bgColor="#aa99fb" posX="10%" posY="25%" />
-            <p>修改记账窗口</p>
+            <ink-spot :size=80 positionType='absolute' bgColor="#aa99fb" posX="2%" posY="4%" :zIndex=100 />
+            <ink-spot :size=30 positionType='absolute' bgColor="#aa99fb" posX="10%" posY="25%" />
+            <p>添加记账窗口</p>
             <input v-model="name" type="text" placeholder="记账内容" />
-            <input v-model="value" type="number" placeholder="金额" style="margin-bottom: 20px;" />
+            <input v-model="value" type="number" placeholder="金额" style="margin-bottom: 20px;" @keydown.enter.prevent="handleSubmit"/>
             <input v-model="date" type="date" class="date" />
             <select v-model="type"
                 style="margin-bottom: 20px; padding: 5px; border-radius: 5px; border: 1px solid #ccc; width: 30%;">
@@ -13,7 +13,7 @@
             </select>
             <div style="display: flex; justify-content: center; gap: 10px;">
                 <button @click="handleCancel">取消</button>
-                <button @click="handleSubmit">修改</button>
+                <button @click="handleSubmit">添加</button>
             </div>
         </div>
     </div>
@@ -40,7 +40,7 @@ const emit = defineEmits<{
 // 表单数据
 const name = ref('');
 const value = ref(0);
-const type = ref<ItemType>(Types.Other);
+const type = ref<ItemType>(Types.Food);
 const date = ref(getToday()); // 默认今日日期
 
 // 提交表单
@@ -70,7 +70,7 @@ const handleCancel = () => {
 const resetForm = () => {
     name.value = '';
     value.value = 0;
-    type.value = Types.Other;
+    type.value = Types.Food;
     date.value = getToday();
 };
 

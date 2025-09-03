@@ -8,9 +8,8 @@
             <span class="date">{{ dateConvert(item.created_at) }}</span>
         </div>
         <div class="item-right">
-            <span style="float: right;">{{ item.value }}</span>
+            <span style="float: right;">{{ item.value.toFixed(2) }}</span>
             <button class="edit-btn" @click="$emit('edit', item)">修改</button>
-            <button class="del-btn" @click="$emit('delete', item.id)">删除</button>
         </div>
     </div>
 
@@ -45,7 +44,7 @@ console.log(r_number_x, r_number_y);
     vertical-align: middle;
     border-radius: 10px;
     width: 100%;
-    min-width: 380px;
+    min-width: 300px;
     padding: 10px;
     margin: 10px 0;
     background: white;
@@ -88,12 +87,12 @@ console.log(r_number_x, r_number_y);
     color: gray;
 }
 
-.edit-btn,
-.del-btn {
+.edit-btn {
     padding: 6px 12px;
     border: none;
     border-radius: 5px;
     margin-left: 8px;
+    margin-right: 8px;
     cursor: pointer;
 }
 
@@ -102,10 +101,7 @@ console.log(r_number_x, r_number_y);
     color: white;
 }
 
-.del-btn {
-    background: #FF4D4F;
-    color: white;
-}
+
 
 .edit-btn:hover,
 .del-btn:hover {

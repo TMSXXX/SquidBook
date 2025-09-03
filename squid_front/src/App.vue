@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onUnmounted, ref } from 'vue'
 import { onMounted } from 'vue'
 import { Types as ImportedTypes } from './types/account'
 import type { Item, ItemType } from './types/account'
@@ -10,6 +10,11 @@ import EditWindow from './components/EditWindow.vue'
 import ExpenseChart from './components/ExpenseChart.vue'
 import InkSpot from './components/InkSpot.vue'
 import ItemComponent from './components/Item.vue'
+
+
+
+
+
 // 使用导入的 Types
 const Types = ImportedTypes
 
@@ -61,7 +66,7 @@ const handleUpdateItem = async (updatedData: {
   id: number;
   name: string;
   value: number;
-  type: ItemType;
+  type: string;
   created_at: string
 }) => {
   try {
@@ -80,12 +85,11 @@ const handleUpdateItem = async (updatedData: {
 // 处理删除记账项
 const handleDeleteItem = async (id: number) => {
   // 先提示确认，避免误删
-  if (!confirm('确定要删除这条记账记录吗？')) return;
-
   try {
     await deleteItem(id); // 1. 先调用删除接口，确保删除成功
     const newList = await getItems(); // 2. 获取删除后的最新数据
     list.value = newList; // 3. 赋值给 list，触发页面更新
+    isEditItem.value = false;
   } catch (error) {
     console.error('删除记账项失败：', error);
     alert('删除失败，请重试！');
@@ -96,17 +100,16 @@ const handleDeleteItem = async (id: number) => {
 
 
 onMounted(async () => {
+
   const data = await getItems();
   list.value = data;
 });
 
 
-
-
 </script>
 
 <template>
-  <div>
+  <div class="app-container">
     <div class="header">
       <h1>鱿型记账</h1>
     </div>
@@ -115,86 +118,211 @@ onMounted(async () => {
     <InkSpot :size=100 positionType='fixed' bgColor="#f9ec55" posX="15%" posY="75%" />
     <InkSpot :size=100 positionType='fixed' bgColor="#f9ec55" posX="90%" posY="20%" :zIndex="0" />
 
-    <div class="content">
-      <div class="feature">
-        <button @click="isAddItem = !isAddItem" style="margin: 0px 10px">添加记账</button>
-        <button @click="isViewChart = !isViewChart" style="margin: 0px 10px">查看汇总</button>
-        <ExpenseChart v-if="isViewChart"
-          :expenses="list.map(item => ({ date: item.created_at, amount: item.value }))" />
-        <div class="edit-mask" v-if="isAddItem || isEditItem || isViewChart"
-          @click.self="isAddItem = false; isEditItem = false; isViewChart = false">
-        </div>
-        <!-- 遮罩层，点击遮罩层关闭窗口 -->
-        <addWindow v-if="isAddItem" :visible="isAddItem" :types="Types" @submit="handleAddItem"
-          @cancel="isAddItem = false" />
+    <!-- 遮罩层 -->
+    <div class="edit-mask" v-if="isAddItem || isEditItem || isViewChart"
+      @click.self="isAddItem = false; isEditItem = false; isViewChart = false">
+    </div>
 
+    <!-- 弹窗组件 -->
+    <addWindow v-if="isAddItem" :visible="isAddItem" :types="Types" @submit="handleAddItem"
+      @cancel="isAddItem = false" />
+    <EditWindow v-if="isEditItem" :types="Types" :editingItem="editItem" @submit="handleUpdateItem"
+      @delete="handleDeleteItem" @cancel="isEditItem = false" />
+    <ExpenseChart v-if="isViewChart" :expenses="list.map(item => ({ date: item.created_at, amount: item.value }))" />
+
+    <!-- 主要内容区域（可滚动） -->
+    <div class="main-content">
+      <div class="content">
+        <div class="feature">
+          <button @click="isAddItem = !isAddItem" style="margin: 0px 10px">添加记账</button>
+          <button @click="isViewChart = !isViewChart" style="margin: 0px 10px">查看汇总</button>
+        </div>
       </div>
 
-    </div>
-    <div class="book">
-      <ItemComponent v-for="item in list" :key="item.id" :item="item" @edit="handleEdit" @delete="handleDeleteItem" />
-      <EditWindow v-if="isEditItem" :types="Types" :editingItem="editItem" @submit="handleUpdateItem"
-        @cancel="isEditItem = false" />
+      <!-- 记账项列表（可滚动） -->
+      <div class="book-container">
+        <div class="book">
+          <ItemComponent v-for="item in list" :key="item.id" :item="item" @edit="handleEdit" />
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
-<style scoped>
-.header {
-  left: 0;
-  top: 0;
-  z-index: 100;
+
+<style>
+/* 修正全局样式 */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
   position: fixed;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  overflow: hidden;
+  /* 只在外层禁用滚动 */
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+</style>
+
+
+<style scoped>
+.app-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  overscroll-behavior: none;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
   color: white;
   text-shadow: 0px 0px 10px rgba(0, 0, 0, 1);
   text-decoration: underline solid black 0.4vw;
-  width: 100%;
   height: 60px;
   background-color: #5F3FF6;
   text-align: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  box-decoration-break: slice;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-top: 60px;
+  /* 头部高度 */
+  overflow: hidden;
+  overscroll-behavior: auto;
 }
 
 .content {
+  padding: 20px 0;
   display: flex;
-  flex-direction: column;
   justify-content: center;
   align-items: center;
-  margin-top: 100px;
-  font-size: 20px;
-  color: rgb(35, 35, 35);
 }
 
 .feature {
-  position: relative;
   text-align: center;
-  width: 80%;
 }
 
+.book-container {
+  overscroll-behavior: contain;
+  overflow-y: auto;
+  /* 允许垂直滚动 */
+  padding: 0 20px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.book {
+  max-width: 800px;
+  margin: 0 auto;
+  padding-bottom: 100px;
+  /* 为底部按钮留出空间 */
+}
+
+/* 移动端样式 */
+@media (max-width: 768px) {
+  .header {
+    padding-top: 20px;
+    padding-bottom: 10px;
+    height: auto;
+  }
 
 
+
+  .main-content {
+    margin-top: 15vw;
+  }
+
+  .feature {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #313131;
+    padding-top: 10px;
+    padding-bottom: 30px;
+    gap: 20px;
+    overflow-block: none;
+  }
+
+  .feature button {
+    width: 40%;
+    padding: 12px 0;
+    background-color: #5F3FF6;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+  }
+
+  .book-container {
+    overscroll-behavior: contain;
+    overflow-y: auto;
+
+    margin: 0 auto;
+    padding-left: 0px;
+    padding-right: 0px;
+    width: 100%;
+    padding-bottom: 80px;
+    /* 为底部固定按钮留出更多空间 */
+    overflow-x: hidden;
+  }
+
+  .book {
+    width: 100%;
+    margin-right: 10px;
+  }
+}
+
+/* 桌面端样式 */
+@media (min-width: 769px) {
+  .feature {
+    flex-direction: row;
+    gap: 20px;
+  }
+
+  .book {
+    width: 60%;
+  }
+}
+
+/* 其他样式保持不变 */
 .edit-mask {
   position: fixed;
-  /* 固定定位，覆盖整个屏幕 */
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.3);
-  /* 半透明黑色背景 */
   z-index: 6;
-  /* 层级低于窗口（99 < 100），确保窗口在遮罩上方 */
   display: flex;
   align-items: center;
-  justify-content: center;
-  /* 让内部的 addWindow 居中 */
-}
-
-.book {
-  position: relative;
-  width: 60%;
-  margin: 20px auto;
   justify-content: center;
 }
 
@@ -204,90 +332,9 @@ button:hover {
   cursor: pointer;
 }
 
-input {
-  margin: 8px 0 5px 0;
-  padding: 5px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  width: 80%;
-}
-
-.del-btn {
-  vertical-align: middle;
-  background-color: #FF4D4F;
-  font-size: 14px;
-  border: none;
-  color: white;
-  margin-left: 10px;
-  cursor: pointer;
-}
-
-.date {
-  font-size: 12px;
-  color: gray;
-}
-
 button:active {
   transform: translate(0, 1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
-
-@media (max-width: 768px) {
-
-  /* 1. 功能按钮（添加记账/查看汇总）纵向排列 */
-  .feature {
-    display: flex;
-    flex-direction: column;
-    /* 纵向排列 */
-    gap: 3vw;
-    /* 按钮之间的间距 */
-  }
-
-  /* 2. 记账项组件：手机端全屏显示，避免左右留白过多 */
-  .book {
-    width: 95%;
-    /* 更贴近屏幕边缘 */
-  }
-
-  /* 3. 图表组件：手机端高度自适应，避免过高 */
-  ExpenseChart {
-    height: 50vw;
-    /* 约250-300px，适合手机屏幕 */
-  }
-
-  /* 4. 弹窗组件（添加/编辑窗口）：手机端宽度占满屏幕 */
-  addWindow,
-  EditWindow {
-    width: 100%;
-    /* 替换电脑端的固定宽度 */
-    max-width: 500px;
-    /* 防止大屏手机上弹窗过宽 */
-  }
-
-  /* 5. 删除按钮：手机端加大点击区域，避免误触 */
-  .del-btn {
-    padding: 1.5vw 3vw;
-    /* 增大内边距 */
-    font-size: 3vw;
-  }
-}
-
-/* 适配电脑端（屏幕宽度 >= 768px）：保持原有布局 */
-@media (min-width: 769px) {
-  .feature {
-    flex-direction: row;
-    /* 横向排列按钮 */
-    gap: 20px;
-  }
-
-  .book {
-    width: 60%;
-    /* 固定列表宽度，避免电脑端过宽 */
-  }
-
-  ExpenseChart {
-    height: 400px;
-    /* 电脑端图表更高 */
-  }
-}
 </style>
+

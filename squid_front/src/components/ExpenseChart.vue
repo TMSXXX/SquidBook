@@ -73,8 +73,8 @@ const dailyTotalsWithInk = computed(() => {
         />
         <!-- 汇总文字（层级高于墨点，避免被遮挡） -->
         <span class="total-text">
-          {{ item.month }}: {{ item.total }} 元 
-          月结余：{{ 2000 - item.total }} 元
+          {{ item.month }}: {{ item.total.toFixed(2) }} 元 <br>
+          月结余：{{ (2000 - item.total).toFixed(2) }} 元
         </span>
       </li>
     </ul>
@@ -91,7 +91,7 @@ const dailyTotalsWithInk = computed(() => {
           :pos-y="item.inkProps.posY"
         />
         <span class="total-text">
-          {{ item.day }}: {{ item.total }} 元
+          {{ item.day }}: {{ item.total.toFixed(2) }} 元
         </span>
       </li>
     </ul>
@@ -106,12 +106,14 @@ const dailyTotalsWithInk = computed(() => {
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 100;
-  width: 30%;
+  width: 50%;
   background: white;
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
   display: flex; /* 恢复 flex 布局，确保内部元素正常排列 */
+  justify-content: center;
+  align-items: center;
   flex-direction: column;
   gap: 12px;
   max-height: 80%;
@@ -120,6 +122,8 @@ const dailyTotalsWithInk = computed(() => {
 
 /* 2. 汇总列表容器：去掉默认 padding */
 .total-list {
+  height: auto;
+  overflow: scroll;
   padding: 0;
   margin: 0;
 }
