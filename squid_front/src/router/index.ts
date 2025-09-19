@@ -1,40 +1,37 @@
-import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router';
-import type { Component } from 'vue';
-const HomePage = () => import('@/views/Home.vue');
-const Expense = () => import('@/views/ExpensePage.vue');
-const Settings = () => import('@/views/Settings.vue');
+// src/router/index.ts
 
-// 使用类型断言
-const routes = [
-  {
-    path: '/',
-    name: 'Home',
-    component: HomePage as Component,
-    meta: { title: '鱿型记账' }
-  },
-  {
-    path: '/expense',
-    name: 'Expense',
-    component: Expense as Component,
-    meta: { title: '支出汇总' }
-  },
-  {
-    path: '/settings',
-    name: 'Settings',
-    component: Settings as Component,
-    meta: { title: '设置' }
-  }
-] as RouteRecordRaw[]; // 对整个数组进行类型断言
+import { createRouter, createWebHistory } from 'vue-router'
+import Home from '../views/Home.vue'
+import ExpensePage from '../views/ExpensePage.vue'
+import Settings from '../views/Settings.vue'
+import Monthly from '../views/Monthly.vue' // 1. 导入新组件
 
 const router = createRouter({
-  history: createWebHashHistory(),
-  routes
-});
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes: [
+    {
+      path: '/',
+      name: 'home',
+      component: Home
+    },
+    {
+      path: '/expense',
+      name: 'expense',
+      component: ExpensePage
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: Settings
+    },
+    // 2. 添加新路由
+    {
+      path: '/monthly/:month', // 使用动态参数 :month
+      name: 'monthly',
+      component: Monthly,
+      props: true // 自动将 :month 参数作为 prop 传递给组件
+    }
+  ]
+})
 
-router.beforeEach((to) => {
-  if (to.meta.title && typeof to.meta.title === 'string') {
-    document.title = to.meta.title;
-  }
-});
-
-export default router;
+export default router

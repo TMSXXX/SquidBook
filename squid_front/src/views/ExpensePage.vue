@@ -5,40 +5,76 @@ import { getItems } from '../api/accountApi';
 import InkSpot from '../components/InkSpot.vue';
 import { useRouter } from 'vue-router';
 import { Chart, registerables } from 'chart.js';
+import { invoke } from '@tauri-apps/api/core';
 Chart.register(...registerables);
 
 const router = useRouter();
 
 // --- 数据和状态管理 ---
 const expenses = ref<Item[]>([]);
+const budgets = ref<Record<string, number>>({});
 const isLoading = ref(true);
 
-const loadExpenses = async () => {
+// --- 数据获取与处理 ---
+const loadData = async () => {
     try {
-        isLoading.value = true;
+        // isLoading 已经在 watch 中处理，这里只负责重置
+        if (!isLoading.value) {
+            isLoading.value = true;
+        }
+        expenses.value = [];
+        budgets.value = {};
+
         const data = await getItems();
         expenses.value = data;
+        await loadAllBudgets();
+
     } catch (error) {
-        console.error('加载支出数据失败：', error);
+        console.error('加载数据失败：', error);
         alert('加载数据失败，请重试！');
     } finally {
+        // 关键：让 watch 来处理后续
         isLoading.value = false;
     }
 };
 
-const totalExpense = computed(() => expenses.value.reduce((sum, item) => sum + item.value, 0));
+const loadAllBudgets = async () => {
+    const monthSet = new Set(expenses.value.map(item => item.created_at.slice(0, 7)));
+    if (monthSet.size === 0) return;
 
-const monthlyExpenses = computed(() => {
-    const result: Record<string, number> = {};
+    const budgetPromises = Array.from(monthSet).map(async (month) => {
+        const amount = await invoke<number | null>('get_monthly_budget', { month });
+        return { month, amount: amount || 0 };
+    });
+    const budgetResults = await Promise.all(budgetPromises);
+    const budgetMap: Record<string, number> = {};
+    budgetResults.forEach(b => {
+        budgetMap[b.month] = b.amount;
+    });
+    budgets.value = budgetMap;
+};
+
+// --- 计算属性 (保持不变) ---
+const monthlySummary = computed(() => {
+    const result: Record<string, { amount: number }> = {};
     expenses.value.forEach(item => {
         const month = item.created_at.slice(0, 7);
-        result[month] = (result[month] || 0) + item.value;
+        if (!result[month]) {
+            result[month] = { amount: 0 };
+        }
+        result[month].amount += item.value;
     });
+
     return Object.entries(result)
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([month, amount]) => ({ month, amount }));
+        .sort((a, b) => b[0].localeCompare(a[0]))
+        .map(([month, { amount }]) => {
+            const budget = budgets.value[month] || 0;
+            const balance = budget - amount;
+            return { month, amount, budget, balance };
+        });
 });
 
+const totalExpense = computed(() => expenses.value.reduce((sum, item) => sum + item.value, 0));
 const averageDailyExpense = computed(() => {
     if (expenses.value.length === 0) return 0;
     const dates = expenses.value.map(item => new Date(item.created_at));
@@ -49,29 +85,29 @@ const averageDailyExpense = computed(() => {
     return totalExpense.value / days;
 });
 
-// --- 为卡片内部生成墨点 ---
-const getRandomInkProps = () => {
-    const size = Math.floor(Math.random() * 30) + 20;
-    const colorPool = ['#aa99fb', '#f9ec55', '#5fc3e4', '#48c9b0'];
-    const bgColor = colorPool[Math.floor(Math.random() * colorPool.length)];
-    const posX = `${Math.floor(Math.random() * 80) + 10}%`;
-    const posY = `${Math.floor(Math.random() * 80) + 10}%`;
-    return { size, bgColor, posX, posY, positionType: 'absolute' as 'absolute' };
-};
-const cardInkProps1 = ref(getRandomInkProps());
-const cardInkProps2 = ref(getRandomInkProps());
-
 // --- 图表逻辑 ---
 const chartCanvas = ref<HTMLCanvasElement | null>(null);
 let chartInstance: Chart | null = null;
 
-const renderChart = () => {
+const updateChart = () => {
+    if (chartCanvas.value && monthlySummary.value.length > 0) {
+        const chartData = [...monthlySummary.value].reverse();
+        const labels = chartData.map(item => item.month);
+        const data = chartData.map(item => item.amount);
+        renderChart(labels, data);
+    } else {
+        if (chartInstance) {
+            chartInstance.destroy();
+            chartInstance = null;
+        }
+    }
+}
+
+const renderChart = (labels: string[], data: number[]) => {
     if (chartInstance) chartInstance.destroy();
     if (!chartCanvas.value) return;
     const ctx = chartCanvas.value.getContext('2d');
     if (!ctx) return;
-    const labels = monthlyExpenses.value.map(item => item.month);
-    const data = monthlyExpenses.value.map(item => item.amount);
     chartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -84,44 +120,39 @@ const renderChart = () => {
         },
         options: {
             responsive: true, maintainAspectRatio: false,
-            scales: { 
-                y: { 
-                    beginAtZero: true, 
-                    ticks: { 
-                        callback: (value) => value + ' 元',
-                        font: { family: "'Smiley Sans', sans-serif" } // 图表刻度字体
-                    } 
-                },
-                x: {
-                    ticks: {
-                        font: { family: "'Smiley Sans', sans-serif" } // 图表刻度字体
-                    }
-                }
+            scales: {
+                y: { beginAtZero: true, ticks: {font: {family: "'Smiley Sans', sans-serif"}} },
+                x: { ticks: {font: {family: "'Smiley Sans', sans-serif"}} }
             },
             plugins: { legend: { display: false } }
         }
     });
 };
 
-onMounted(() => loadExpenses());
-watch(monthlyExpenses, async () => {
-    await nextTick();
-    renderChart();
+// 关键修正：使用 watch 侦听 isLoading 的变化
+watch(isLoading, async (newIsLoading) => {
+    // 当加载结束时 (从 true -> false)
+    if (!newIsLoading) {
+        // 等待 Vue 将 v-else 的内容渲染到 DOM 中
+        await nextTick();
+        // 现在，chartCanvas.value 肯定存在，我们再调用图表更新
+        updateChart();
+    }
+});
+
+onMounted(() => {
+    loadData();
 });
 </script>
 
 <template>
     <div class="summary-container">
-        <div class="loading" v-if="isLoading">
-            <p>加载中...</p>
-        </div>
-
+        <div class="loading" v-if="isLoading"><p>加载中...</p></div>
         <div class="summary-content" v-else>
             <div class="stats-cards">
                 <div class="item-wrapper">
                     <div class="item-background" style="transform: rotate(2deg);"></div>
                     <div class="item-content-wrapper stat-card">
-                        <InkSpot :size="40" :bgColor="cardInkProps1.bgColor" :posX="'10%'" :posY="'90%'" positionType="absolute"/>
                         <h3>总支出</h3>
                         <p class="stat-value">{{ totalExpense.toFixed(2) }}</p>
                     </div>
@@ -129,7 +160,6 @@ watch(monthlyExpenses, async () => {
                 <div class="item-wrapper">
                     <div class="item-background" style="transform: rotate(-2deg);"></div>
                     <div class="item-content-wrapper stat-card">
-                        <InkSpot :size="50" :bgColor="cardInkProps2.bgColor" :posX="'85%'" :posY="'15%'" positionType="absolute"/>
                         <h3>记录条数</h3>
                         <p class="stat-value">{{ expenses.length }}</p>
                     </div>
@@ -137,23 +167,18 @@ watch(monthlyExpenses, async () => {
                 <div class="item-wrapper">
                     <div class="item-background" style="transform: rotate(1deg);"></div>
                     <div class="item-content-wrapper stat-card">
-                         <InkSpot :size="45" bgColor="#5fc3e4" :posX="'90%'" :posY="'80%'" positionType="absolute"/>
                         <h3>平均每日支出</h3>
                         <p class="stat-value">{{ averageDailyExpense.toFixed(2) }}</p>
                     </div>
                 </div>
             </div>
-
             <div class="item-wrapper">
                 <div class="item-background" style="transform: rotate(1deg);"></div>
                 <div class="item-content-wrapper chart-wrapper">
                     <h2>月度支出图表</h2>
-                    <div class="chart-container">
-                        <canvas ref="chartCanvas"></canvas>
-                    </div>
+                    <div class="chart-container"><canvas ref="chartCanvas"></canvas></div>
                 </div>
             </div>
-
             <div class="item-wrapper">
                 <div class="item-background" style="transform: rotate(-1.5deg);"></div>
                 <div class="item-content-wrapper monthly-summary">
@@ -162,25 +187,24 @@ watch(monthlyExpenses, async () => {
                         <thead>
                             <tr>
                                 <th>月份</th>
+                                <th>预算</th>
                                 <th>总支出</th>
-                                <th>平均每日</th>
+                                <th>结余</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="item in monthlyExpenses" :key="item.month">
-                                <td>{{ item.month }}</td>
-                                <td>{{ item.amount.toFixed(2) }} 元</td>
-                                <td>
-                                    {{ (item.amount / new Date(Number(item.month.split('-')[0]), Number(item.month.split('-')[1]), 0).getDate()).toFixed(2) }} 元
-                                </td>
+                            <tr v-for="item in monthlySummary" :key="item.month">
+                                <td><router-link :to="`/monthly/${item.month}`">{{ item.month }}</router-link></td>
+                                <td>{{ item.budget.toFixed(2) }}</td>
+                                <td>{{ item.amount.toFixed(2) }}</td>
+                                <td :class="{ 'positive-balance': item.balance >= 0, 'negative-balance': item.balance < 0 }">{{ item.balance.toFixed(2) }}</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
-
             <div class="action-buttons">
-                <button @click="loadExpenses">刷新数据</button>
+                <button @click="loadData">刷新数据</button>
             </div>
         </div>
     </div>
@@ -295,7 +319,7 @@ watch(monthlyExpenses, async () => {
 
 /* --- 图表卡片 --- */
 .chart-wrapper { padding: 30px; }
-.chart-container { position: relative; height: 400px; }
+.chart-container { position: relative; height: 300px; }
 
 /* --- 表格卡片 --- */
 .monthly-summary { padding: 30px; }
@@ -336,7 +360,7 @@ tr:hover { background-color: #fdf59a; }
     .summary-container {
         margin-top: 80px;
         /* 在移动端也确保有足够的底部空间 */
-        padding: 60px 15px 150px;
+        padding: 60px 15px 200px;
     }
     .stats-cards {
         gap: 30px;

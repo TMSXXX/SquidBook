@@ -1,3 +1,5 @@
+// src-tauri/src/lib.rs (已注册预算接口)
+
 mod backend;
 
 use backend::Database;
@@ -7,9 +9,12 @@ use tauri::Manager;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_share::init())
+        .plugin(tauri_plugin_fs::init())
+        
         .setup(|app| {
-            // 初始化数据库
-            let db = Database::new().expect("Failed to initialize database");
+            let db = Database::new(app.handle()).expect("Failed to initialize database");
             app.manage(db);
             
             if cfg!(debug_assertions) {
@@ -25,9 +30,12 @@ pub fn run() {
             backend::get_items,
             backend::add_item,
             backend::delete_item,
-            backend::update_item
+            backend::update_item,
+            backend::import_data,
+            // --- 在这里注册新的预算命令 ---
+            backend::get_monthly_budget,
+            backend::set_monthly_budget
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-

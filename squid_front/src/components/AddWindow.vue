@@ -19,12 +19,12 @@
 </template>
 
 <script setup lang="ts">
-// --- 您的 Script 内容，100% 保持原样 ---
 import { ref } from 'vue'
-import { Types, type ItemType } from '../types/account';
+import { Types, type ItemType } from '@/types/account';
 import { getToday } from '@/utils/dateUtil';
 import InkSpot from './InkSpot.vue';
-import { addItem } from '../api/accountApi';
+// 关键修正：不再需要从这里导入 addItem
+// import { addItem } from '../api/accountApi'; 
 
 const emit = defineEmits<{
     (e: 'submit', data: { name: string; value: number; type: ItemType; created_at: string }): void;
@@ -33,20 +33,16 @@ const emit = defineEmits<{
 
 const name = ref('');
 const value = ref(0);
-const type = ref<ItemType>(Types.Other);
+const type = ref<ItemType>(Types.Food);
 const date = ref(getToday());
 
-const handleSubmit = async () => {
+// 关键修正：handleSubmit 现在只负责验证和发射事件
+const handleSubmit = () => {
     if (!name.value || value.value <= 0) {
         alert('请填写完整且有效的数据！');
         return;
     }
-    await addItem({
-        name: name.value,
-        value: value.value,
-        type: type.value,
-        created_at: date.value,
-    });
+    // 不再调用 addItem API，而是直接将数据发射出去
     emit('submit', {
         name: name.value,
         value: value.value,
@@ -64,7 +60,7 @@ const handleCancel = () => {
 const resetForm = () => {
     name.value = '';
     value.value = 0;
-    type.value = Types.Other;
+    type.value = Types.Food;
     date.value = getToday();
 };
 </script>
