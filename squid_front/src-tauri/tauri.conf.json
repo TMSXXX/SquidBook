@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "鱿型记账",
+  "productName": "墨鱼记账",
   "version": "0.1.0",
   "identifier": "com.squidbook.octopus",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "鱿型记账",
+        "title": "墨鱼记账",
         "width": 800,
         "height": 600,
         "resizable": true,

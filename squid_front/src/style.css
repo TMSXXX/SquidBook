@@ -3,11 +3,20 @@
   line-height: 1.5;
   font-weight: 400;
 
+  --splat-pink: #fe5a98;
+  --splat-green: #99f324;
+  --text-color: #353535;
+  --card-bg: #ffffff;
+  --app-background: #f5f5f5; /* 也可以定义一些全局背景色 */
+
+  --font-title: "Zhanku Kuhei", sans-serif;
+  --font-normal: "Zhanku Kuaile", sans-serif;
+
   color-scheme: light dark;
   /* 修正文本颜色：浅色背景配深色文本，避免视觉干扰 */
-  color: rgba(0, 0, 0, 0.87); 
-  background-color: azure;
+  color: rgba(0, 0, 0, 0.87);
 
+  color-scheme: light dark;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -25,12 +34,17 @@ button {
   transition: all 0.2s cubic-bezier(0.075, 0.82, 0.165, 1);
   padding: 10px 20px;
   background-color: #313131;
-  color: #EEEEEE;
+  color: #eeeeee;
   border-radius: 20px;
   border-width: 0cap;
+  font-family: var(--font-normal);
+      outline-width: 2px;
+    outline-style:solid;
+    outline-color: rgb(58, 58, 58);
 }
 
-html, body {
+html,
+body {
   height: 100%;
   width: 100%; /* 补充宽度100%，让根容器撑满视口宽度 */
   background-color: azure;
@@ -42,4 +56,20 @@ html, body {
   width: 100%; /* 让 #app 撑满 html/body 的宽度 */
   /* 若后续内部元素需要居中，可加 max-width + margin: 0 auto，暂时先撑满 */
   /* max-width: 1440px; margin: 0 auto; */
+}
+
+@font-face {
+  font-family: "Zhanku Kuhei"; /* 给你的字体起一个名字，之后在CSS中会用到 */
+  src: url("./assets/fonts/ZCOOL-Kuhei.ttf") format("truetype"); /* 字体文件的路径 */
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap; /* 一个优化选项，让文字在字体加载完成前先显示，体验更好 */
+}
+
+@font-face {
+  font-family: "Zhanku Kuaile"; /* 给你的字体起一个名字，之后在CSS中会用到 */
+  src: url("./assets/fonts/ZCOOL-Kuaile.ttf") format("truetype"); /* 字体文件的路径 */
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap; /* 一个优化选项，让文字在字体加载完成前先显示，体验更好 */
 }

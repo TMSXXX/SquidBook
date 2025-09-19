@@ -1,31 +1,34 @@
 <template>
-    <div class="addWindow">
-        <ink-spot :size=80 positionType='absolute' bgColor="#aa99fb" posX="98%" posY="10%" :zIndex=100 />
-        <ink-spot :size=30 positionType='absolute' bgColor="#aa99fb" posX="90%" posY="75%" />
-        <p>修改记账窗口</p>
-        <input v-model="name" type="text" placeholder="记账内容" />
-        <input v-model="value" type="number" placeholder="金额" style="margin-bottom: 20px;" />
-        <input v-model="date" type="date" class="date" />
-        <select v-model="type"
-            style="margin-bottom: 20px; padding: 5px; border-radius: 5px; border: 1px solid #ccc; width: 30%;">
-            <option v-for="(label, key) in Types" :key="key" :value="label">{{ label }}</option>
-        </select>
-        <div style="display: flex; justify-content: center; gap: 10px;">
-            <!-- 添加了动态class来控制按钮状态和动画 -->
-            <button 
-                @click="handleDelete" 
-                class="del-btn"
-                :class="{ 'confirm-delete': isDeleteConfirming }"
-            >
-                {{ isDeleteConfirming ? '真?' : '删除' }}
-            </button>
-            <button @click="handleCancel">取消</button>
-            <button @click="handleSubmit">修改</button>
+    <div class="item-wrapper">
+        <div class="item-background"></div>
+
+        <div class="item-content-wrapper">
+            <ink-spot :size=80 positionType='absolute' bgColor="#aa99fb" posX="98%" posY="10%" :zIndex=1 />
+            <ink-spot :size=30 positionType='absolute' bgColor="#aa99fb" posX="90%" posY="75%" />
+            <p>修改记账窗口</p>
+            <input v-model="name" type="text" placeholder="记账内容" />
+            <input v-model="value" type="number" placeholder="金额" />
+            <input v-model="date" type="date" class="date" />
+            <select v-model="type">
+                <option v-for="(label, key) in Types" :key="key" :value="label">{{ label }}</option>
+            </select>
+            <div class="btn-group">
+                <button
+                    @click="handleDelete"
+                    class="del-btn"
+                    :class="{ 'confirm-delete': isDeleteConfirming }"
+                >
+                    {{ isDeleteConfirming ? '真?' : '删除' }}
+                </button>
+                <button @click="handleCancel" class="cancel-btn">取消</button>
+                <button @click="handleSubmit" class="submit-btn">修改</button>
+            </div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
+// --- 您的 Script 内容，100% 保持原样 ---
 import { ref } from 'vue'
 import { Types, type Item, type ItemType } from '@/types/account';
 import { getToday } from '@/utils/dateUtil';
@@ -45,7 +48,6 @@ const name = ref(props.editingItem.name || '');
 const value = ref(props.editingItem.value || 0);
 const type = ref<ItemType>(props.editingItem.type as ItemType || Types.Other);
 const date = ref(props.editingItem.created_at || getToday());
-// 添加删除确认状态变量
 const isDeleteConfirming = ref(false);
 
 const handleSubmit = () => {
@@ -65,15 +67,11 @@ const handleSubmit = () => {
 
 const handleDelete = () => {
     if (isDeleteConfirming.value) {
-        // 二次确认后执行删除
         emit('delete', props.editingItem.id);
         resetForm();
         isDeleteConfirming.value = false;
     } else {
-        // 第一次点击，进入确认状态
         isDeleteConfirming.value = true;
-        
-        // 5秒后自动取消确认状态
         setTimeout(() => {
             if (isDeleteConfirming.value) {
                 isDeleteConfirming.value = false;
@@ -85,7 +83,6 @@ const handleDelete = () => {
 const handleCancel = () => {
     emit('cancel');
     resetForm();
-    // 取消时重置删除确认状态
     isDeleteConfirming.value = false;
 };
 
@@ -99,105 +96,123 @@ const resetForm = () => {
 </script>
 
 <style scoped>
-.addWindow {
-    overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    z-index: 10;
+/* --- 全新的、基于三明治结构的样式 --- */
+.item-wrapper {
+    position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    position: fixed;
-    width: 40%;
+    width: 90%;
+    max-width: 400px;
+    z-index: 10;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    will-change: transform;
+}
+.item-wrapper:hover {
+    transform: translate(-50%, -50%) scale(1.02);
+}
+
+.item-background {
+    position: absolute;
+    top: -10px; left: -10px; right: -10px; bottom: -10px;
+    background-color: var(--text-color, #353535);
+    border-radius: 22px;
+    transform: rotate(-2deg);
+    transition: all 0.3s ease;
+}
+.item-wrapper:hover .item-background {
+    transform: rotate(1deg) scale(1.01);
+    background-color: var(--splat-pink);
+}
+
+.item-content-wrapper {
+    position: relative;
+    background: white;
+    color: #353535;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
     align-items: center;
-    border-radius: 10px;
-    padding: 20px;
-    background: white;
-    color: #353535;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
 }
 
-input,
-select {
-    width: 40%;
-    padding: 8px;
-    margin-top: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
+/* 标题样式 */
+p {
+    font-family: var(--font-title);
+    font-size: 2em;
+    margin: 0 0 15px;
 }
 
+/* 输入框样式 */
+input, select {
+    font-family: var(--font-normal);
+    width: 80%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 3px solid var(--text-color, #353535);
+    border-radius: 8px;
+    font-size: 1em;
+    text-align: center;
+}
+input:focus, select:focus {
+    outline: 3px solid var(--splat-green);
+    border-color: var(--splat-green);
+}
+
+/* 按钮组 */
 .btn-group {
     display: flex;
     justify-content: center;
+    gap: 10px;
     margin-top: 10px;
+    flex-wrap: wrap; /* 增加换行，防止移动端挤压 */
+}
+button {
+    font-family: var(--font-title);
+    padding: 10px 20px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 1.1em;
+    transition: all 0.2s ease;
+    border: 3px solid var(--text-color, #353535);
+}
+button:hover {
+    transform: translateY(-3px) scale(1.05);
 }
 
+/* 各按钮具体样式 */
+.submit-btn {
+    background: var(--splat-green);
+    color: var(--text-color);
+    transform: rotate(2deg);
+}
+.cancel-btn {
+    background-color: #eee;
+    color: #888;
+    transform: rotate(-2deg);
+    border-color: #ccc;
+}
 .del-btn {
-    background-color: #5F3FF6;
-    transition: all 0.2s cubic-bezier(0.075, 0.82, 0.165, 1);
+    background-color: #ff7675;
+    color: white;
+    transform: rotate(1deg);
+    border-color: #d63031;
 }
-
-/* 添加删除确认状态的样式 */
 .confirm-delete {
     background-color: #ff4d4f;
     animation: shake 0.5s ease-in-out infinite;
 }
 
-/* 定义颤抖动画 */
 @keyframes shake {
-    0%, 100% { transform: translate(0, 0) rotate(0deg); }
-    10% { transform: translate(-1px, -1px) rotate(-0.5deg); }
-    20% { transform: translate(1px, 1px) rotate(0.5deg); }
-    30% { transform: translate(-1px, 1px) rotate(-0.5deg); }
-    40% { transform: translate(1px, -1px) rotate(0.5deg); }
-    50% { transform: translate(-1px, 0) rotate(-0.5deg); }
-    60% { transform: translate(1px, 0) rotate(0.5deg); }
-    70% { transform: translate(-1px, 1px) rotate(-0.5deg); }
-    80% { transform: translate(1px, -1px) rotate(0.5deg); }
-    90% { transform: translate(-1px, -1px) rotate(-0.5deg); }
-}
-    
-
-button {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 5px;
-    background: #5F3FF6;
-    color: white;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.075, 0.82, 0.165, 1);
-}
-
-button:hover {
-    transform: translate(0, -2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.date {
-    padding: 5px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    width: 40%;
-}
-
-select {
-    margin-top: 20px;
-    margin-bottom: 20px;
-    padding: 5px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    width: 30%;
+    0%, 100% { transform: rotate(1deg); }
+    10%, 30%, 50%, 70%, 90% { transform: rotate(0deg); }
+    20%, 40%, 60%, 80% { transform: rotate(2deg); }
 }
 
 @media screen and (max-width: 768px) {
-    .addWindow {
-        width: 80%;
-    }
-
-    input,
-    select {
-        width: 80%;
-    }
+    .item-wrapper { width: 80%; }
+    input, select { width: 80%; }
 }
 </style>
